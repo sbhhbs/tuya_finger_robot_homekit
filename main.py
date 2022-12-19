@@ -6,6 +6,17 @@ import threading
 import time
 import pytz
 import coloredlogs
+from tuya_iot import (
+    TuyaOpenAPI,
+    AuthType,
+    TuyaOpenMQ,
+    TuyaDeviceManager,
+    TuyaHomeManager,
+    TuyaDeviceListener,
+    TuyaDevice,
+    TuyaTokenInfo,
+    TUYA_LOGGER
+)
 
 from pyhap.accessory import Accessory
 from pyhap.accessory_driver import AccessoryDriver
@@ -15,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 coloredlogs.install(level='INFO', milliseconds=True)
 
+TUYA_LOGGER.setLevel(logging.DEBUG)
+
 # logging.basicConfig(level=logging.DEBUG)
 
 tuya_access_id = os.getenv("tuya_access_id")
@@ -23,11 +36,15 @@ tuya_device_id = os.getenv("tuya_device_id")
 tuya_endpoint = os.getenv("tuya_endpoint")
 tuya_username = os.getenv("tuya_username")
 tuya_password = os.getenv("tuya_password")
+tuya_countrycode = os.getenv("tuya_countrycode")
+tuya_schema = os.getenv("tuya_schema")
 
 home_port = int(os.getenv("home_port", '51826'))
 persist_folder = os.getenv('persist_folder', '/homekit_status/')
 address = os.getenv("home_address")
 timezone = os.getenv('timezone', 'Asia/Shanghai')
+
+openapi = TuyaOpenAPI(tuya_endpoint, tuya_access_id, tuya_access_key, AuthType.SMART_HOME)
 
 
 class FingerRobot(Accessory):
@@ -50,6 +67,13 @@ class FingerRobot(Accessory):
 
     def set_switch(self, state):
         logger.info(f"State set: {state}")
+        if state:
+            openapi.connect(tuya_username, tuya_password,
+                            country_code=tuya_countrycode,
+                            schema=tuya_schema
+                            )
+            commands = {'commands': [{'code': 'switch', 'value': True}]}
+            openapi.post('/v1.0/iot-03/devices/{}/commands'.format(tuya_device_id), commands)
         self.char_switch.value = False
         self.char_switch.notify()
 
