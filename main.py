@@ -63,13 +63,23 @@ class FingerRobot(Accessory):
             serial_number=tuya_device_id
         )
         self.local_gateway = None
+        self.local_fingerbot = None
         if local_gateway_device_id and local_gateway_local_key:
-            self.local_gateway = tinytuya.Device(
-                dev_id=local_gateway_device_id,
-                address='Auto',  # Or set to 'Auto' to auto-discover IP address
-                local_key=local_gateway_local_key,
-                version=3.4
-            )
+            self._setup_local_devices()
+
+    def _setup_local_devices(self):
+        self.local_gateway = tinytuya.Device(
+            dev_id=local_gateway_device_id,
+            address='Auto',  # Or set to 'Auto' to auto-discover IP address
+            local_key=local_gateway_local_key,
+            version=3.4
+        )
+        self.local_fingerbot = tinytuya.Device(
+            local_finger_bot_device_id,
+            cid=local_finger_bot_cid,
+            parent=self.local_gateway
+        )
+        logger.info(f"{self.local_fingerbot.status()}")
 
     def set_switch(self, state):
         logger.info(f"State set: {state}")
@@ -83,17 +93,14 @@ class FingerRobot(Accessory):
                 openapi.post('/v1.0/iot-03/devices/{}/commands'.format(tuya_device_id), commands)
 
             def do_locally():
-                fingerbot = tinytuya.Device(
-                    local_finger_bot_device_id,
-                    cid=local_finger_bot_cid,
-                    parent=self.local_gateway
-                )
-                fingerbot.turn_on(2)
+                self.local_fingerbot.turn_on(2)
 
-            if self.local_gateway is not None:
+            if self.local_fingerbot is not None:
                 try:
                     do_locally()
                 except:
+                    logger.error(f"Local failed, trying remote fallback")
+                    self._setup_local_devices()
                     do_remotely()
             else:
                 do_remotely()
