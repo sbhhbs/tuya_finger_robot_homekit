@@ -15,6 +15,7 @@ pytz = "*"
 coloredlogs = "*"
 ipython = "*"
 tuya-iot-py-sdk = "*"
+tinytuya = "*"
 
 [requires]
 python_version = "3.9"
